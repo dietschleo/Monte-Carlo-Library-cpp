@@ -20,6 +20,7 @@ int main() {
     std::string option_type = "asian_options";
 
     double S = 75.0;       // Initial stock price
+    double t = 0.0; // Current time
     double K = 100.0;       // Strike price
     double T = 1.0;         // Time to maturity (in years)
     double sigma = 0.2;     // Volatility
@@ -28,42 +29,26 @@ int main() {
     int Nmc = 1000000;        // Number of Monte Carlo simulations
     double v_h = 0.01;      // Perturbation for volatility
     double s_h = 0.5;       // Perturbation for stock price
+    int seed = 42;
 
-    // Create the arguments vector (must align with the function's expected order)
-    std::vector<double> arguments = {
-        S,          // Stock price
-        K,          // Strike price
-        T,          // Time to maturity
-        0.0,        // Placeholder for `t` (unused in this example)
-        sigma,      // Volatility
-        r,          // Risk-free rate
-        0.0,        // Placeholder for `K2` (unused in this example)
-        0.0,        // Placeholder for `T1` (unused in this example)
-        0.0,        // Placeholder for `T2` (unused in this example)
-        N // Number of time steps
-    };
+    // Create a Simulation object
+    Simulation simulation(seed);
 
-    std::cout << "S,fixed_strike_call_delta,fixed_strike_call_gamma,fixed_strike_call_price,fixed_strike_call_vega,fixed_strike_call_vomma,fixed_strike_put_delta,fixed_strike_put_gamma,fixed_strike_put_price,fixed_strike_put_vega,fixed_strike_put_vomma,floating_strike_call_delta,floating_strike_call_gamma,floating_strike_call_price,floating_strike_call_vega,floating_strike_call_vomma,floating_strike_put_delta,floating_strike_put_gamma,floating_strike_put_price,floating_strike_put_vega,floating_strike_put_vomma";
-    for (int i=0; i<=50; ++i){
-        arguments[0]=S+ static_cast<double>(i);
-        // Call the Monte Carlo simulation function
-        std::map<std::string, double> results = monte_carlo_simmulation(option_type, arguments, Nmc, v_h, s_h);
+    // Create a EuropeanOption using the simulation
+    EuropeanOption europeanOption = simulation.createEuropeanOption(S, K, T, t, sigma, r);
 
-        // Display the results
-        //std::cout << "Monte Carlo Simulation Results for Asian Options:\n" ;
+    // Get the prices of the EuropeanOption
+    std::map<std::string, double> prices = europeanOption.Price();
 
-        if (results.empty()) {
-            std::cout << "Results map is empty!" << std::endl;
-        }
-        std::cout << arguments[0] << ",";
-        for (const auto& result : results) {
-            std::cout << result.second << ",";
-        }
-    std::cout << "\n";
+    // Print the results
+    std::cout << "European Option Prices:" << std::endl;
+    for (const auto& price : prices) {
+        std::cout << price.first << ": " << price.second << std::endl;
     }
 
-    std::cin >> r;
 
+
+    std::cin >> r;
     return 0;
 }
 

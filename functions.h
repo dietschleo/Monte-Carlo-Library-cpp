@@ -38,5 +38,19 @@ std::map<std::string, double> vega_vomma_extraction(double p, double p_plus, dou
 std::map<std::string, double> asian_options(double S, double K, double T, double r, std::vector<std::vector<double>>& underlying);
 std::map<std::string, double> monte_carlo_simmulation(std::string option_type, std::vector<double> arguments, int Nmc, double v_h, double s_h);
 
-#endif  // End the header guard
+
+
+
+
+        /*public:
+
+            double S;
+            double K;
+            double T;
+            double sigma;
+            double r;
+            AsianOption.price() */
+
+
+  // End the header guard
 
