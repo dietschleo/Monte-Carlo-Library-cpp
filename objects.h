@@ -29,6 +29,13 @@ public:
         return Znestedvect;
     }
 
+    void Reset(){
+        //method to clear memory of instance
+        Zvector.clear();
+        Zvector2.clear();
+        Znestedvect.clear();
+    }
+
     RandomNumber(int seed, int SimulationNumber, int DayNumber, double S, double r, double sigma, double T)
         : seed(seed), SimulationNumber(SimulationNumber), DayNumber(DayNumber), S(S), sigma(sigma), r(r), T(T){}
 };
@@ -36,8 +43,8 @@ public:
 class EuropeanOption {
 private:
     bool pricesCalculated;
-    RandomNumber rand;
 public:
+    RandomNumber rand;
     double S, K, T, t, sigma, r, s_h, v_h;
     std::map<std::string, double> prices;
 
@@ -59,6 +66,28 @@ public:
         }
         return prices;
     }
+};
+
+class CompoundOption {
+private:
+    bool pricesCalculated;
+//compound_option(double S, double K1, double K2, double T1, double T2, double sigma, double r, const std::vector<double>& z1, const std::vector<double>& z2)
+public:
+    RandomNumber rand;
+    double S, K, K2, T, T2, t, sigma, r, s_h, v_h;
+    std::map<std::string, double> prices;
+
+    CompoundOption(RandomNumber rand, double S, double K, double K2, double T, double T2, double t, double sigma, double r,double v_h,double s_h)
+    : rand(rand), S(S), K(K), K2(K2), T(T), T2(T2), t(t), sigma(sigma), r(r), v_h(v_h), s_h(s_h), pricesCalculated(false) {}
+
+    std::map<std::string, double> Price(){
+        if (!pricesCalculated){
+            rand.CreateRandomSeries();
+            prices = compound_option(S, K, K2, T, T2, sigma, r, rand.Zvector, rand.Zvector2);
+        }
+        return prices;
+    }
+    
 };
 
 class AsianOption {
@@ -108,6 +137,11 @@ public:
         return newrand;
     }
     
+    CompoundOption CreateCompoundOption(){
+        CompoundOption compound(rand, S, K, K2, T, T2, t, sigma, r, v_h, s_h);
+        return compound;
+    }
+
     AsianOption CreateAsianOption(){
         AsianOption asian(rand, S, K, T, t, sigma, r, v_h, s_h);
         return asian;

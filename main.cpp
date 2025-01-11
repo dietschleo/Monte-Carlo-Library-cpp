@@ -21,11 +21,11 @@ double r;
     Simulation simulation;
 
     // Create a EuropeanOption using the simulation
-    AsianOption asian = simulation.CreateAsianOption();
+    CompoundOption compound = simulation.CreateCompoundOption();
 
-    std::cout << "RandomNumber rand : " << asian.rand.SimulationNumber;
+    std::cout << "RandomNumber rand : " << compound.rand.SimulationNumber;
     // Get the prices of the EuropeanOption
-    std::map<std::string, double> prices = asian.Price();
+    std::map<std::string, double> prices = compound.Price();
     
     for (const auto& [key, value] : prices) {
         std::cout << key << ": " << value << std::endl;
