@@ -15,42 +15,24 @@
 // multi_simmulations_SBM, asian_options, delta_gamma_extraction, vega_vomma_extraction
 
 int main() {
-
-
-
-    double S = 75.0;       // Initial stock price
-    double t = 0.0; // Current time
-    double K = 100.0;       // Strike price
-    double T = 1.0;         // Time to maturity (in years)
-    double sigma = 0.2;     // Volatility
-    double r = 0.05;        // Risk-free interest rate
-    double N = 252;            // Number of time steps
-    int Nmc = 10000;        // Number of Monte Carlo simulations
-    double v_h = 0.01;      // Perturbation for volatility
-    double s_h = 0.5;       // Perturbation for stock price
-    int seed = 42;
+double r;
 
     // Create a Simulation object
     Simulation simulation;
 
     // Create a EuropeanOption using the simulation
-    EuropeanOption europeanOption = simulation.CreateEuropeanOption();
+    AsianOption asian = simulation.CreateAsianOption();
 
+    std::cout << "RandomNumber rand : " << asian.rand.SimulationNumber;
     // Get the prices of the EuropeanOption
-    std::map<std::string, double> prices = europeanOption.Price();
-    std::map<std::string, double> mcprices = europeanOption.MonteCarloPrice();
+    std::map<std::string, double> prices = asian.Price();
+    
+    for (const auto& [key, value] : prices) {
+        std::cout << key << ": " << value << std::endl;
+    }
 
 
-    std::cout << "call: " << prices["call"] << std::endl;
-
-    std::cout << "mc call: " << mcprices["call"] << std::endl;
-
-    std::cout << "put: " << prices["put"] << std::endl;
-
-    std::cout << "mc put: " << mcprices["call"] << std::endl;
-
-
-
+    std::cout << "computation finished!";
     std::cin >> r;
     return 0;
 }

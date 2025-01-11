@@ -27,7 +27,7 @@ auto parallel_run(Function pricing, int n_thread, Args... args) -> decltype(pric
 
 double discount(double v, double t, double r);
 std::vector<double> SBM(double T, int N, double sigma);
-std::vector<std::vector<double>> multi_simmulations_SBM(double T, int N, double sigma, int Nmc, int seed);
+std::vector<std::vector<double>> multi_simmulations_SBM(double T, int N, double sigma, double S, double r, int Nmc, int seed);
 std::vector<double> vector_std_dist(double mean, double sigma, int Nmc, int seed);
 std::map<std::string, double> monte_carlo_european(double S, double K, double T, double t, double sigma, double r, const std::vector<double>& z_vector);
 std::map<std::string, double> black_scholes_european(double S, double K, double T, double t, double sigma, double r);
@@ -39,20 +39,6 @@ std::map<std::string, double> asian_options(double S, double K, double T, double
 std::map<std::string, double> monte_carlo_simmulation(std::string option_type, std::vector<double> arguments, int Nmc, double v_h, double s_h);
 
 
-
-
-
-        /*public:
-
-            double S;
-            double K;
-            double T;
-            double sigma;
-            double r;
-            AsianOption.price() */
-
-
-  // End the header guard
 
 
 #endif
