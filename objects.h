@@ -1,10 +1,10 @@
 #ifndef OBJECTS_H
 #define OBJECTS_H
 
+//import dependencies
+#include "functions.h"
+#include <map>
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Class creation///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class EuropeanOption {
 private:
@@ -31,7 +31,7 @@ public:
 class RandomNumber {
 private:
     int seed, SimulationNumber, DayNumber; 
-    bool ZvectComputed, ZnestedvectComputed;
+    double S, sigma, T;
     
 
 public:
@@ -39,29 +39,36 @@ public:
     std::vector<std::vector<double>> Znestedvect;
 
     std::vector<std::vector<double>> CreateRandomSeries(){
-        if (!ZvectComputed){
-            Zvector = vector_std_dist(0.0, 1.0, SimulationNumber, seed);
-            Zvector2 = vector_std_dist(0.0, 1.0, SimulationNumber, seed + 1);
-            ZvectComputed = true;
-        }
-    return {Zvector, Zvector2};
+        Zvector = vector_std_dist(0.0, 1.0, SimulationNumber, seed);
+        Zvector2 = vector_std_dist(0.0, 1.0, SimulationNumber, seed + 1);
+        return {Zvector, Zvector2};
     }
 
-    RandomNumber(int seed, int SimulationNumber, int DayNumber)
-        : seed(seed), SimulationNumber(SimulationNumber), DayNumber(DayNumber), ZvectComputed(false), ZnestedvectComputed(false) {}
+    std::vector<std::vector<double>> CreateBrownianMotion(){
+        Znestedvect = multi_simmulations_SBM(T, DayNumber, sigma, SimulationNumber, seed);
+        return Znestedvect
+    }
+
+    RandomNumber(int seed, int SimulationNumber, int DayNumber, double S, double sigma, double T)
+        : seed(seed), SimulationNumber(SimulationNumber), DayNumber(DayNumber), S(S), sigma(sigma), T(T){}
 };
 
 class Simulation{ //Factory class
 private:
-    int seed; //instance of random number
+    int seed = 42; //instance of random number
+
+    //define default simmulation values 
+    double S = 100, K = 105, T = 1.0, t = 0.0, sigma = 0.2;
+    double r = 0.05, K2 = 5, T2 = 2.0;
 
 public: 
-    int DayNumber = 252;
-    int SimulationNumber = 1000; //Nmc
-    explicit Simulation(int seed) : seed(seed) {}
+    int DayNumber = 252, SimulationNumber = 1000;
+
+    explicit Simulation(){}
 
     RandomNumber CreateRandomNumber(std::mt19937 rng){
-        RandomNumber rand(seed, SimulationNumber, DayNumber);
+        RandomNumber rand(seed, SimulationNumber, DayNumber, S, sigma);
+        seed = seed + 1; //change seed for future instance of RandomNumber
         return rand;
     }
     /*<
