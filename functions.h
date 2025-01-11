@@ -54,3 +54,5 @@ std::map<std::string, double> monte_carlo_simmulation(std::string option_type, s
 
   // End the header guard
 
+
+#endif
