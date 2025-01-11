@@ -21,16 +21,26 @@ double r;
     Simulation simulation;
 
     // Create a EuropeanOption using the simulation
-    CompoundOption compound = simulation.CreateCompoundOption();
+    EuropeanOption euro = simulation.CreateEuropeanOption();
 
-    std::cout << "RandomNumber rand : " << compound.rand.SimulationNumber;
+    for (int i = 0; i <= 50; i++){
+
+    euro.S = euro.S + 1;
+
     // Get the prices of the EuropeanOption
-    std::map<std::string, double> prices = compound.Price();
+    std::map<std::string, double> prices = euro.Price();
     
     for (const auto& [key, value] : prices) {
-        std::cout << key << ": " << value << std::endl;
+        std::cout  << key << ": " << value << "\n" << std::endl;
     }
 
+    prices = euro.Greeks();
+
+    for (const auto& [key, value] : prices) {
+        std::cout << "S=" << euro.S << " " << key << ": " << value << std::endl;
+    }
+    
+    }
 
     std::cout << "computation finished!";
     std::cin >> r;

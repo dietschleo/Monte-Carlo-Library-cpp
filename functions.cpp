@@ -110,7 +110,7 @@ std::map<std::string, double> black_scholes_european(double S, double K, double 
 }
 
 std::map<std::string, double> compound_option(double S, double K1, double K2, double T1, double T2, double sigma, double r, const std::vector<double>& z1, const std::vector<double>& z2) {
-    /* function that prices a compound option ie. call on call where K1/T1 are teh strike and maturity of the outer option*/
+    /* function that prices a compound option ie. call on call where K1/T1 are the strike and maturity of the outer option*/
 
     // Initialize map and keys
     std::map<std::string, double> results;

@@ -42,7 +42,8 @@ public:
 
 class EuropeanOption {
 private:
-    bool pricesCalculated;
+    bool pricesCalculated, MCdefault = false;
+    std::map<std::string, double> MCprice; //cache for MC calculated price
 public:
     RandomNumber rand;
     double S, K, T, t, sigma, r, s_h, v_h;
@@ -52,20 +53,75 @@ public:
     EuropeanOption(RandomNumber rand, double S, double K, double T, double t, double sigma, double r,double v_h,double s_h)
         : rand(rand), S(S), K(K), T(T), t(t), sigma(sigma), r(r), v_h(v_h), s_h(s_h), pricesCalculated(false) {}
 
-    //getter function for prices:
+    //function for prices:
+
     std::map<std::string, double> Price() {
+        if (!MCdefault){
+            prices = AnalyticalPrice();
+        } else {
+            prices = MonteCarloPrice();
+        }
+        return prices;
+    }
+    std::map<std::string, double> AnalyticalPrice() {
         prices = black_scholes_european(S, K, T, t, sigma, r);
         return prices;
     }
 
     std::map<std::string, double> MonteCarloPrice() {
-        if (!pricesCalculated){
+        if (MCprice.empty()){
             rand.CreateRandomSeries();
             prices = monte_carlo_european(S, K, T, t, sigma, r, rand.Zvector);
+            MCprice = prices; 
             pricesCalculated = true;
         }
         return prices;
     }
+
+    void Analytical(bool analytical){
+        // set setting to use monte carlo by default
+        if(!analytical){
+            MCdefault = false;
+        } else {
+            MCdefault = true;
+        }
+    }
+
+    std::map<std::string, double> Greeks(){
+        //placeholders for current variables and prices
+        std::map<std::string, double> temp_prices = prices;
+        double temp_S = S;
+        double temp_sigma = sigma;
+        S = S + s_h;
+        std::map<std::string, double> p_plus = Price();
+        S = temp_S - s_h;
+        std::map<std::string, double> p_minus = Price();
+        sigma = sigma + v_h;
+        std::map<std::string, double>  p_plus_v = Price();
+        sigma = temp_sigma - v_h;
+        std::map<std::string, double>  p_minus_v = Price();
+
+        std::map<std::string, double> results;
+        for (auto& pair : prices) { //for each type of contract:
+            results[pair.first + "_price"] = pair.second;
+            std::map<std::string, double> greeks = delta_gamma_extraction(prices[pair.first], p_plus[pair.first], p_minus[pair.first], s_h);
+            greeks["vega"] = vega_vomma_extraction(prices[pair.first], p_plus_v[pair.first], p_minus_v[pair.first], v_h)["vega"];
+            greeks["vomma"] = vega_vomma_extraction(prices[pair.first], p_plus_v[pair.first], p_minus_v[pair.first], v_h)["vomma"];
+            for (auto& duo : greeks) { //for each greek:
+                std::string contract_greek = pair.first + "_" + duo.first;
+                results[contract_greek] = duo.second;
+                //std::cout << "Value for " << contract_greek << " is : " << results[contract_greek] << "\n";
+            }
+        }
+
+        //reset original price and variable
+        prices = temp_prices;
+        sigma = temp_sigma;
+        S = temp_S;
+        return results;
+    }
+
+
 };
 
 class CompoundOption {
