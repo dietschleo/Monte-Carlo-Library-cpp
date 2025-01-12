@@ -11,7 +11,8 @@
 #include <type_traits>
 #include <tuple>
 
-
+//// Transverse functions and random numbers ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 double discount(double v, double t, double r){
     return v * std::exp(-r * t);
@@ -32,6 +33,7 @@ std::vector<double> SBM(double T, int N, double sigma, double S, double r, int s
     for (int i=1; i<N; i++) {
         double z = normal_dist(generator);
         trajectory[i]=trajectory[i-1] * std::exp((r - 0.5 * sigma * sigma) * dt + sigma * z);
+    //std::cout << trajectory[0] << " i : " << trajectory[i] << "\n";
     }
 
     return trajectory;
@@ -65,6 +67,35 @@ std::vector<double> vector_std_dist(double mean, double sigma, int Nmc, int seed
     return z_vector;
 }
 
+double norm_cdf(double x) {
+    /*  function that takes x a value of the standard deviation and returns the corresponding centile
+    */
+    return 0.5 * (1 + std::erf(x / std::sqrt(2.0)));
+}
+
+std::map<std::string, double> delta_gamma_extraction(double p, double p_plus, double p_minus, double h){
+    /*Function that approximates delta and gamma with final central difference*/
+    std::map <std::string, double> results;
+
+    results["delta"] = (p_plus - p_minus) / (2 * h);
+    results["gamma"] = (p_plus - 2 * p + p_minus) / (h * h);
+
+    return results;
+}
+
+std::map<std::string, double> vega_vomma_extraction(double p, double p_plus, double p_minus, double h){
+    /*Function that approximates vega and vomma with final central difference*/
+    std::map <std::string, double> results;
+
+    results["vega"] = (p_plus - p_minus) / (2 * h);
+    results["vomma"] = (p_plus - 2 * p + p_minus) / (h * h);
+
+    return results;
+}
+
+//// Option pricing functions //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 std::map<std::string, double> monte_carlo_european(double S, double K, double T, double t, double sigma, double r, const std::vector<double>& z_vector) {
     /* Function that calculates the average pay-off of a European call option
        given Nmc random numbers*/
@@ -86,12 +117,6 @@ std::map<std::string, double> monte_carlo_european(double S, double K, double T,
     results["put"] = B;
 
     return results;
-}
-
-double norm_cdf(double x) {
-    /*  function that takes x a value of the standard deviation and returns the corresponding centile
-    */
-    return 0.5 * (1 + std::erf(x / std::sqrt(2.0)));
 }
 
 std::map<std::string, double> black_scholes_european(double S, double K, double T, double t, double sigma, double r) {
@@ -147,26 +172,6 @@ std::map<std::string, double> compound_option(double S, double K1, double K2, do
     return results;
 }    
 
-std::map<std::string, double> delta_gamma_extraction(double p, double p_plus, double p_minus, double h){
-    /*Function that approximates delta and gamma with final central difference*/
-    std::map <std::string, double> results;
-
-    results["delta"] = (p_plus - p_minus) / (2 * h);
-    results["gamma"] = (p_plus - 2 * p + p_minus) / (h * h);
-
-    return results;
-}
-
-std::map<std::string, double> vega_vomma_extraction(double p, double p_plus, double p_minus, double h){
-    /*Function that approximates vega and vomma with final central difference*/
-    std::map <std::string, double> results;
-
-    results["vega"] = (p_plus - p_minus) / (2 * h);
-    results["vomma"] = (p_plus - 2 * p + p_minus) / (h * h);
-
-    return results;
-}
-
 std::map<std::string, double> asian_options(double S, double r, double T, double K, std::vector<std::vector<double>>& underlying) {
     /* function that returns the price of an asian option based on underlying price, risk free rate, strike price for each contract type
     (ie. fixed strike call, fixed strike put, floating strike call, floating strike put)*/
@@ -191,8 +196,7 @@ std::map<std::string, double> asian_options(double S, double r, double T, double
         }
         ST = underlying[sim][N-1];
         A=A/N;
-
-        fi_call += std::max(A - K, 0.0);
+        fi_call += std::max((A - K), 0.0);
         fi_put += std::max(K - A, 0.0);
         fl_call += std::max(A - ST, 0.0);
         fl_put += std::max(ST - A, 0.0);
@@ -205,6 +209,11 @@ std::map<std::string, double> asian_options(double S, double r, double T, double
 
     return results;
 }
+
+std::map<std::string, double> american_options(double S, double r, double T, double K, std::vector<std::vector<double>>& underlying) {
+
+}
+
 
 std::map<std::string, double> monte_carlo_simmulation(std::string option_type, std::vector<double> arguments, int Nmc, double v_h, double s_h) {
     //arguments is :

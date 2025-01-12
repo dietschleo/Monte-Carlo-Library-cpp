@@ -7,11 +7,10 @@
 
 class RandomNumber {
 private:
-    int seed; 
-    double S, sigma, T, r;
-    
-
+    int seed;    
+    double S_hist, sigma_hist, r_hist; //control variables for updates
 public:
+    double S, sigma, T, r;
     int SimulationNumber, DayNumber;
     std::vector<double> Zvector, Zvector2;
     std::vector<std::vector<double>> Znestedvect;
@@ -23,8 +22,12 @@ public:
     }
 
     std::vector<std::vector<double>> CreateBrownianMotion(){
-        if (Znestedvect.size() == 0){
+        //check if the vector has never been computed or variables have been updated since last computation
+        if (Znestedvect.size() == 0 || S != S_hist || sigma != sigma_hist || r != r_hist){
             Znestedvect = multi_simmulations_SBM(T, DayNumber, sigma, S, r, SimulationNumber, seed);
+            S_hist = S;
+            sigma_hist= sigma;
+            r_hist=r;
         }
         return Znestedvect;
     }
@@ -87,7 +90,10 @@ public:
         }
     }
 
-    std::map<std::string, double> Greeks(){
+    std::map<std::string, double> ExtractGreeks(){
+        if (prices.empty()){
+            prices = Price();
+        }
         //placeholders for current variables and prices
         std::map<std::string, double> temp_prices = prices;
         double temp_S = S;
@@ -101,6 +107,7 @@ public:
         sigma = temp_sigma - v_h;
         std::map<std::string, double>  p_minus_v = Price();
 
+        prices = temp_prices;
         std::map<std::string, double> results;
         for (auto& pair : prices) { //for each type of contract:
             results[pair.first + "_price"] = pair.second;
@@ -113,9 +120,7 @@ public:
                 //std::cout << "Value for " << contract_greek << " is : " << results[contract_greek] << "\n";
             }
         }
-
         //reset original price and variable
-        prices = temp_prices;
         sigma = temp_sigma;
         S = temp_S;
         return results;
@@ -143,6 +148,43 @@ public:
         }
         return prices;
     }
+
+    std::map<std::string, double> ExtractGreeks(){
+        if (prices.empty()){
+            prices = Price();
+        }
+        //placeholders for current variables and prices
+        std::map<std::string, double> temp_prices = prices;
+        double temp_S = S;
+        double temp_sigma = sigma;
+        S = S + s_h;
+        std::map<std::string, double> p_plus = Price();
+        S = temp_S - s_h;
+        std::map<std::string, double> p_minus = Price();
+        sigma = sigma + v_h;
+        std::map<std::string, double>  p_plus_v = Price();
+        sigma = temp_sigma - v_h;
+        std::map<std::string, double>  p_minus_v = Price();
+
+        prices = temp_prices;
+        std::map<std::string, double> results;
+        for (auto& pair : prices) { //for each type of contract:
+            results[pair.first + "_price"] = pair.second;
+            std::map<std::string, double> greeks = delta_gamma_extraction(prices[pair.first], p_plus[pair.first], p_minus[pair.first], s_h);
+            greeks["vega"] = vega_vomma_extraction(prices[pair.first], p_plus_v[pair.first], p_minus_v[pair.first], v_h)["vega"];
+            greeks["vomma"] = vega_vomma_extraction(prices[pair.first], p_plus_v[pair.first], p_minus_v[pair.first], v_h)["vomma"];
+            for (auto& duo : greeks) { //for each greek:
+                std::string contract_greek = pair.first + "_" + duo.first;
+                results[contract_greek] = duo.second;
+                //std::cout << "Value for " << contract_greek << " is : " << results[contract_greek] << "\n";
+            }
+        }
+        //reset original price and variable
+        
+        sigma = temp_sigma;
+        S = temp_S;
+        return results;
+    }
     
 };
 
@@ -154,19 +196,55 @@ private:
 public:
     RandomNumber rand;
     double S, K, T, t, sigma, r, v_h, s_h;
-    std::map<std::string, double> prices;
+    std::map<std::string, double> prices, greeks;
 
     AsianOption(RandomNumber rand, double S, double K, double T, double t, double sigma, double r, double v_h, double s_h)
         : rand(rand), S(S), K(K), T(T), t(t), sigma(sigma), r(r), v_h(v_h), s_h(s_h), pricesCalculated(false) {}
     
     std::map<std::string, double> Price(){
-        if(!pricesCalculated){
-            rand.CreateBrownianMotion();
-            prices = asian_options(S, K, T, r, rand.Znestedvect);
-            pricesCalculated = true;
-        }
+        rand.S = S;
+        rand.sigma = sigma;
+        rand.CreateBrownianMotion();
+        prices = asian_options(S, r, T, K, rand.Znestedvect);
     return prices;
     }
+
+        std::map<std::string, double> ExtractGreeks(){
+        //placeholders for current variables and prices
+        if (prices.empty()){
+            prices = Price();
+        }
+        std::map<std::string, double> temp_prices = prices;
+        double temp_S = S;
+        double temp_sigma = sigma;
+        S = S + s_h;
+        std::map<std::string, double> p_plus = Price();
+        S = temp_S - s_h;
+        std::map<std::string, double> p_minus = Price();
+        sigma = sigma + v_h;
+        std::map<std::string, double>  p_plus_v = Price();
+        sigma = temp_sigma - v_h;
+        std::map<std::string, double>  p_minus_v = Price();
+
+        prices = temp_prices;
+        std::map<std::string, double> results;
+        for (auto& pair : prices) { //for each type of contract:
+            results[pair.first + "_price"] = pair.second;
+            std::map<std::string, double> greeks = delta_gamma_extraction(prices[pair.first], p_plus[pair.first], p_minus[pair.first], s_h);
+            greeks["vega"] = vega_vomma_extraction(prices[pair.first], p_plus_v[pair.first], p_minus_v[pair.first], v_h)["vega"];
+            greeks["vomma"] = vega_vomma_extraction(prices[pair.first], p_plus_v[pair.first], p_minus_v[pair.first], v_h)["vomma"];
+            for (auto& duo : greeks) { //for each greek:
+                std::string contract_greek = pair.first + "_" + duo.first;
+                results[contract_greek] = duo.second;
+                std::cout << S << " Value for " << contract_greek << " is : " << results[contract_greek] << "\n";
+            }
+        }
+        //reset original price and variable
+
+        sigma = temp_sigma;
+        S = temp_S;
+        return results;
+        }
 };
 
 class Simulation{ //Factory class
