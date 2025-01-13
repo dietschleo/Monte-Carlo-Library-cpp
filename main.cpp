@@ -10,24 +10,40 @@
 #include <tuple>
 #include <string>
 #include <random>
+#include <chrono> // For timing
 
 
-
-// Assume all the required function declarations are included here, such as:
-// multi_simmulations_SBM, asian_options, delta_gamma_extraction, vega_vomma_extraction
 int main() {
-double r;
+    double r;
 
-//test_asian_options();
+    auto start_time3 = std::chrono::high_resolution_clock::now();
+
     Simulation sim;
+    AsianOption asian = sim.CreateAsianOption();
+    asian.rand.SimulationNumber = 1000000;
+/*
+    auto end_time3 = std::chrono::high_resolution_clock::now();
+    auto duration3 = std::chrono::duration_cast<std::chrono::milliseconds>(end_time3 - start_time3);
+    std::cout << "Execution time init: " << duration3.count() << " ms" << std::endl;
 
-    for(int i = 75; i <= 125; ++i){
-    AmericanOption US = sim.CreateAmericanOption();
-    US.S = i;
-    US.rand.S = i;
-    double price = US.CallPrice();
-    std::cout << "S= "<< US.rand.S << "|  price: " << price << "\n";
-    }
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    auto price = asian.Price();
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    std::cout << "Execution time single thread: " << duration.count() << " ms" << std::endl;
+*/
+    auto start_time2 = std::chrono::high_resolution_clock::now();
+
+    auto prices = asian.TempPrice();
+
+    auto end_time2 = std::chrono::high_resolution_clock::now();
+    auto duration2 = std::chrono::duration_cast<std::chrono::milliseconds>(end_time2 - start_time2);
+    std::cout << "Execution time multi thread: " << duration2.count() << " ms" << std::endl;
+
+    
+
 
 
     std::cout << "computation finished!";

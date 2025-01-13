@@ -6,10 +6,10 @@
 #include <map>
 
 class RandomNumber {
-private:
-    int seed;    
+private:    
     double S_hist, sigma_hist, r_hist; //control variables for updates
 public:
+    int seed;
     double S, sigma, T, r;
     int SimulationNumber, DayNumber;
     std::vector<double> Zvector, Zvector2;
@@ -39,6 +39,9 @@ public:
         Znestedvect.clear();
     }
 
+    void SetSeed(int NewSeed){
+        seed = NewSeed;
+    }
     RandomNumber(int seed, int SimulationNumber, int DayNumber, double S, double r, double sigma, double T)
         : seed(seed), SimulationNumber(SimulationNumber), DayNumber(DayNumber), S(S), sigma(sigma), r(r), T(T){}
 };
@@ -207,6 +210,35 @@ public:
         rand.CreateBrownianMotion();
         prices = asian_options(S, r, T, K, rand.Znestedvect);
     return prices;
+    }
+
+    std::map<std::string, double> TempPrice() {
+    // Define a lambda function to wrap the call to asian_options
+    auto asian_option_pricer = [this](double S, double r, double T, double K, const std::vector<std::vector<double>>& Znestedvect, int seed) {
+        RandomNumber local_rand = rand;   // Create a local copy of rand
+        local_rand.seed = seed;     // Assign a unique seed for this thread
+        local_rand.CreateBrownianMotion(); // Generate Brownian motion with the new seed
+        return asian_options(S, r, T, K, local_rand.Znestedvect);
+    };
+
+    // Use parallel_run to compute results across multiple threads
+    int n_threads = 5;
+    auto results = parallel_run(
+        [this, asian_option_pricer](double S, double r, double T, double K, const std::vector<std::vector<double>>& Znestedvect, int thread_index) {
+            int unique_seed = rand.seed + thread_index; // Unique seed for each thread
+            return asian_option_pricer(S, r, T, K, Znestedvect, unique_seed);
+        },
+        n_threads,
+        S, r, T, K, rand.Znestedvect, 0 // Thread index passed as the last argument
+    );
+
+    // Compute the average of the results
+    std::map<std::string, double> averaged_results;
+    for (const auto& [key, value] : results) {
+        averaged_results[key] = value / static_cast<double>(n_threads); // Divide by the number of threads
+    }
+
+    return averaged_results;
     }
 
         std::map<std::string, double> ExtractGreeks(){
