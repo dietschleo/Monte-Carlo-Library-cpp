@@ -50,7 +50,7 @@ private:
 public:
     RandomNumber rand;
     double S, K, T, t, sigma, r, s_h, v_h;
-    std::map<std::string, double> prices;
+    std::map<std::string, double> prices, greeks;
 
     //constructor
     EuropeanOption(RandomNumber rand, double S, double K, double T, double t, double sigma, double r,double v_h,double s_h)

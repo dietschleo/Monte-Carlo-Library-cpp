@@ -47,21 +47,20 @@ void test_asian_options() {
    asian.rand.DayNumber = N;
    asian.rand.SimulationNumber = Nmc;
 
+    // Display prices in CSV-like format
+    std::cout << "Type Value\n";
+    for (const auto& pair : prices) {
+        std::cout << pair.first << " " << pair.second << "\n";
+    }
 
- auto prices = asian.Price();
-    std::cout << "Asian Option Prices:\n";
-    std::cout << "Fixed Strike Call: " << prices["fixed_strike_call"] << "\n";
-    std::cout << "Fixed Strike Put: " << prices["fixed_strike_put"] << "\n";
-    std::cout << "Floating Strike Call: " << prices["floating_strike_call"] << "\n";
-    std::cout << "Floating Strike Put: " << prices["floating_strike_put"] << "\n";
+    // Add a blank line to separate sections
+    std::cout << "\n";
 
-auto greeks = asian.ExtractGreeks();
-
-for (const auto& pair : greeks) {
-    std::cout << "Key: " << pair.first << ", Value: " << pair.second << std::endl;
-}
-
-
+    // Display greeks in CSV-like format
+    std::cout << "Greek Value\n";
+    for (const auto& pair : greeks) {
+        std::cout << pair.first << " " << pair.second << "\n";
+    }
 
 }
 

@@ -210,10 +210,68 @@ std::map<std::string, double> asian_options(double S, double r, double T, double
     return results;
 }
 
-std::map<std::string, double> american_options(double S, double r, double T, double K, std::vector<std::vector<double>>& underlying) {
+//// Functions related to american options /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+double mean(std::vector<double> series){
+    //I can't believe I need to code this.
+    double mean = 0.0, N = series.size();
+    for(int i = 0; i < N; i++){
+        mean += mean;
+    }
+    return mean / N;
 }
 
+std::map<std::string, double> OLSregression(std::vector<double> X, std::vector<double> Y){
+    //function that returns slope and intercept of an OLS SLR between X and Y series
+
+    std::map<std::string, double> results;
+    double N = X.size();
+
+    if(N != Y.size()){
+        std::cout << "Error: expected two series of the same size.";
+        return results;
+    }
+    double Xmean = mean(X);
+    double Ymean = mean(Y);
+    //using: slope = Cov(X,Y)/Var(X)
+    double Cov = 0.0;
+    double Var = 0.0;
+
+    for(int i=0; i < N; ++i){
+        Cov += (X[i] - Xmean) * (Y[i] - Ymean);
+            double temp = (x[i] - Xmean); //placeholder to prevent computing twice
+            Var += temp * temp;
+    }
+    results["slope"] = Cov / Var;
+    results["intercept"] = Ymean - results["slope"] * Xmean;
+    return results;
+}
+
+double american_options(double S, double r, double T, double K, std::vector<std::vector<double>>& underlying, std::string optiontype) {
+    //function that computes an american option price using the Longstaff-Schwartz method. optiontype is "call" or "put"
+    //returns a double instead of a map since it's not computationally interesting to compute put and call prices all at once.
+
+    std::map<std::string, double> results;
+    int Nmc = underlying.size(); //nb of paths
+    double N = underlying[0].size();//length of paths
+    double dt = T / N; //time step size
+    double inv_Nmc = 1 / Nmc; //weight of a single sim
+
+    std::vector<int> exercise_time(Nmc, 0); //a vector to store the timestep options are exercised.
+
+    if (underlying.empty() || underlying[0].empty()) {
+        std::cerr << "Error: 'underlying' data is empty.\n";
+        return -1;
+    }
+    
+    for(int sim = 0; sim < Nmc; ++sim){
+        //LSM method 
+
+    }
+
+    return payoff;
+}
 
 std::map<std::string, double> monte_carlo_simmulation(std::string option_type, std::vector<double> arguments, int Nmc, double v_h, double s_h) {
     //arguments is :
