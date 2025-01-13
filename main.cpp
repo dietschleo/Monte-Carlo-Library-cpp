@@ -10,59 +10,7 @@
 #include <tuple>
 #include <string>
 #include <random>
-void test_asian_options() {
-    // Parameters for the test
-    double S = 100.0;        // Initial stock price
-    double r = 0.05;         // Risk-free rate
-    double T = 1.0;          // Maturity (1 year)
-    double K = 100.0;        // Strike price
-    double sigma = 0.2;      // Volatility
-    int N = 10;             // Number of time steps
-    int Nmc = 10;         // Number of Monte Carlo simulations
-    int seed = 42;           // Random seed for reproducibility
-/*
-    // Step 1: Generate GBM trajectories
-    auto underlying = multi_simmulations_SBM(T, N, sigma, S, r, Nmc, seed);
 
-    // Step 2: Calculate Asian option prices
-    auto results = asian_options(S, r, T, K, underlying);
-
-    // Step 3: Print results
-    std::cout << "Asian Option Prices:\n";
-    std::cout << "Fixed Strike Call: " << results["fixed_strike_call"] << "\n";
-    std::cout << "Fixed Strike Put: " << results["fixed_strike_put"] << "\n";
-    std::cout << "Floating Strike Call: " << results["floating_strike_call"] << "\n";
-    std::cout << "Floating Strike Put: " << results["floating_strike_put"] << "\n";
-*/
-
-   Simulation sim;
-   AsianOption asian = sim.CreateAsianOption();
-   asian.S = S;
-   asian.r = r;
-   asian.T = T;
-   asian.K = K;
-   asian.sigma = sigma;
-   asian.rand.sigma = sigma;
-   asian.rand.S = S;
-   asian.rand.DayNumber = N;
-   asian.rand.SimulationNumber = Nmc;
-
-    // Display prices in CSV-like format
-    std::cout << "Type Value\n";
-    for (const auto& pair : prices) {
-        std::cout << pair.first << " " << pair.second << "\n";
-    }
-
-    // Add a blank line to separate sections
-    std::cout << "\n";
-
-    // Display greeks in CSV-like format
-    std::cout << "Greek Value\n";
-    for (const auto& pair : greeks) {
-        std::cout << pair.first << " " << pair.second << "\n";
-    }
-
-}
 
 
 // Assume all the required function declarations are included here, such as:
@@ -70,7 +18,17 @@ void test_asian_options() {
 int main() {
 double r;
 
-test_asian_options();
+//test_asian_options();
+    Simulation sim;
+
+    for(int i = 75; i <= 125; ++i){
+    AmericanOption US = sim.CreateAmericanOption();
+    US.S = i;
+    US.rand.S = i;
+    double price = US.CallPrice();
+    std::cout << "S= "<< US.rand.S << "|  price: " << price << "\n";
+    }
+
 
     std::cout << "computation finished!";
     std::cin >> r;

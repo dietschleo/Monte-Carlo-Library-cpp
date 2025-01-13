@@ -247,6 +247,29 @@ public:
         }
 };
 
+class AmericanOption{
+private:
+    bool pricesCalculated;
+    double price;
+public:
+    RandomNumber rand;
+    double S, K, T, t, sigma, r, v_h, s_h;
+    std::map<std::string, double> prices, greeks;
+
+    AmericanOption(RandomNumber rand, double S, double K, double T, double t, double sigma, double r, double v_h, double s_h)
+        : rand(rand), S(S), K(K), T(T), t(t), sigma(sigma), r(r), v_h(v_h), s_h(s_h), pricesCalculated(false){}
+
+    double CallPrice(){
+        if (!pricesCalculated){
+            rand.CreateBrownianMotion();
+            //american_options(double S, double r, double T, double K, std::vector<std::vector<double>>& underlying, std::string optiontype)
+            price = american_options(S, r, T, K, rand.Znestedvect,"call");
+        }
+        return price;
+    }
+
+};
+
 class Simulation{ //Factory class
 
 public:
@@ -279,6 +302,11 @@ public:
     AsianOption CreateAsianOption(){
         AsianOption asian(rand, S, K, T, t, sigma, r, v_h, s_h);
         return asian;
+    }
+
+    AmericanOption CreateAmericanOption(){
+        AmericanOption american(rand, S, K, T, t, sigma, r, v_h, s_h); //initiate an instance of the EuropeanOption object
+        return american;
     }
 
     EuropeanOption CreateEuropeanOption(){

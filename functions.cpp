@@ -217,12 +217,12 @@ double mean(std::vector<double> series){
     //I can't believe I need to code this.
     double mean = 0.0, N = series.size();
     for(int i = 0; i < N; i++){
-        mean += mean;
+        mean += series[i];
     }
     return mean / N;
 }
 
-std::map<std::string, double> OLSregression(std::vector<double> X, std::vector<double> Y){
+std::map<std::string, double> OLSregression(const std::vector<double> X, std::vector<double> Y){
     //function that returns slope and intercept of an OLS SLR between X and Y series
 
     std::map<std::string, double> results;
@@ -240,11 +240,34 @@ std::map<std::string, double> OLSregression(std::vector<double> X, std::vector<d
 
     for(int i=0; i < N; ++i){
         Cov += (X[i] - Xmean) * (Y[i] - Ymean);
-            double temp = (x[i] - Xmean); //placeholder to prevent computing twice
+            double temp = (X[i] - Xmean); //placeholder to prevent computing twice
             Var += temp * temp;
     }
     results["slope"] = Cov / Var;
     results["intercept"] = Ymean - results["slope"] * Xmean;
+    return results;
+}
+
+std::map<std::string, std::vector<double>> is_in_the_money(std::vector<double>& underlying, const std::vector<int>& exercise_time, double K){
+    // function that returns the prices and their index when they're in the money and haven't been exercised yet
+    int Nmc = underlying.size();
+    std::map<std::string, std::vector<double>> results;
+    std::vector<double> ITM(Nmc), index(Nmc);
+    int count_itm = 0;    
+  
+    for (int i = 0; i < Nmc; ++i) {
+        //check if the option is ITM and hasn't been exercised yet
+        if(underlying[i] > K && exercise_time[i] == -1){
+            ITM[count_itm] = underlying[i];
+            index[count_itm] = (double)i;
+            count_itm += 1;
+        }
+    }
+
+    index.resize(count_itm);
+    ITM.resize(count_itm);
+    results["index"] = index;
+    results["price"] = ITM;
     return results;
 }
 
@@ -253,23 +276,60 @@ double american_options(double S, double r, double T, double K, std::vector<std:
     //returns a double instead of a map since it's not computationally interesting to compute put and call prices all at once.
 
     std::map<std::string, double> results;
+    double payoff = 0.0;
     int Nmc = underlying.size(); //nb of paths
     double N = underlying[0].size();//length of paths
     double dt = T / N; //time step size
-    double inv_Nmc = 1 / Nmc; //weight of a single sim
+    double inv_Nmc = 1.0 / Nmc; //weight of a single sim
 
-    std::vector<int> exercise_time(Nmc, 0); //a vector to store the timestep options are exercised.
+    std::vector<int> exercise_time(Nmc, -1); //a vector to store the timestep options are exercised.
 
     if (underlying.empty() || underlying[0].empty()) {
         std::cerr << "Error: 'underlying' data is empty.\n";
         return -1;
     }
     
-    for(int sim = 0; sim < Nmc; ++sim){
-        //LSM method 
+    //LSM method
+    for(int t = N - 2; t >= 0; t--){ //loop backward
+        
+        //note for later: the cross section vectors could probably be pointers 
+        std::vector<double> cross_section(Nmc);
+        std::vector<double> CS_payoff;
 
+        //build cross-sectional vector at t
+        for (int j = 0; j < Nmc; ++j){cross_section[j] = underlying[j][t];}
+        //identify in the money paths 
+        std::map<std::string, std::vector<double>> ITM = is_in_the_money(cross_section, exercise_time, K);
+
+        int N_ITM = ITM["index"].size();
+        if (N_ITM == 0){break;}
+
+        //cross-sectional payoff (at t+1) not exercised 
+        for (int i = 0; i < N_ITM; ++i){//iterate on ITM
+            CS_payoff.emplace_back( //discounted ITM cf in t+1
+                discount(
+                    std::max(underlying[ITM["index"][i]][t + 1] - K, 0.0),
+                    dt, r));
+        }
+    
+        std::map<std::string, double> reg = OLSregression(ITM["price"], CS_payoff);
+        std::vector<double> continuation_val(N_ITM);
+        //estimate continuation value
+        for(int i = 0; i < N_ITM; ++i){
+            continuation_val[i] = reg["intercept"] + reg["slope"] * ITM["price"][i];
+            if(continuation_val[i] > std::max(ITM["price"][i] - K, 0.0)){
+                exercise_time[ITM["index"][i]] = t; //exercised
+            }
+        }
     }
-
+    
+    for (int i = 0; i< Nmc; ++i){
+        if(exercise_time[i] >= 0){ //don't sum unexercized options
+            payoff += inv_Nmc * discount(
+                std::max(underlying[i][exercise_time[i]] - K, 0.0), 
+                exercise_time[i] * dt, r); 
+        }
+    }
     return payoff;
 }
 

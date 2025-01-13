@@ -38,6 +38,10 @@ std::map<std::string, double> vega_vomma_extraction(double p, double p_plus, dou
 std::map<std::string, double> asian_options(double S, double K, double T, double r, std::vector<std::vector<double>>& underlying);
 std::map<std::string, double> monte_carlo_simmulation(std::string option_type, std::vector<double> arguments, int Nmc, double v_h, double s_h);
 
+double mean(std::vector<double> series);
+std::map<std::string, double> OLSregression(const std::vector<double> X, std::vector<double> Y);
+std::map<std::string, std::vector<double>> is_in_the_money(std::vector<double>& underlying, const std::vector<int>& exercise_time, double K);
+double american_options(double S, double r, double T, double K, std::vector<std::vector<double>>& underlying, std::string optiontype);
 
 
 
