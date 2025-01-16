@@ -15,37 +15,23 @@
 
 int main() {
     double r;
-
-    auto start_time3 = std::chrono::high_resolution_clock::now();
-
-    Simulation sim;
-    AsianOption asian = sim.CreateAsianOption();
-    asian.rand.SimulationNumber = 1000000;
-/*
-    auto end_time3 = std::chrono::high_resolution_clock::now();
-    auto duration3 = std::chrono::duration_cast<std::chrono::milliseconds>(end_time3 - start_time3);
-    std::cout << "Execution time init: " << duration3.count() << " ms" << std::endl;
-
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    auto price = asian.Price();
+
+    Simulation sim;
+    sim.SimulationNumber = 100000;
+    
+    auto eur = sim.CreateEuropeanOption();
+    std::cout << "eur.rand.SimulationNumber "<< eur.rand.SimulationNumber << std::endl;
+    eur.Analytical(true);
+
+    auto p = eur.MonteCarloPrice();
+    auto p2= eur.AnalyticalPrice();
+    std::cout << "mcPrice: " << p["call"] << "  P_analytical: " << p2["call"];
 
     auto end_time = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-    std::cout << "Execution time single thread: " << duration.count() << " ms" << std::endl;
-*/
-    auto start_time2 = std::chrono::high_resolution_clock::now();
-
-    auto prices = asian.TempPrice();
-
-    auto end_time2 = std::chrono::high_resolution_clock::now();
-    auto duration2 = std::chrono::duration_cast<std::chrono::milliseconds>(end_time2 - start_time2);
-    std::cout << "Execution time multi thread: " << duration2.count() << " ms" << std::endl;
-
-    
-
-
-
+    std::cout << "Execution time multi thread: " << duration.count() << " ms" << std::endl;
     std::cout << "computation finished!";
     std::cin >> r;
     return 0;

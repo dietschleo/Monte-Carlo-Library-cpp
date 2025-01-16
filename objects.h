@@ -86,7 +86,7 @@ public:
 
     void Analytical(bool analytical){
         // set setting to use monte carlo by default
-        if(!analytical){
+        if(analytical){
             MCdefault = false;
         } else {
             MCdefault = true;
@@ -292,17 +292,39 @@ public:
         : rand(rand), S(S), K(K), T(T), t(t), sigma(sigma), r(r), v_h(v_h), s_h(s_h), pricesCalculated(false){}
 
     double CallPrice(){
-        if (!pricesCalculated){
-            rand.CreateBrownianMotion();
-            //american_options(double S, double r, double T, double K, std::vector<std::vector<double>>& underlying, std::string optiontype)
-            price = american_options(S, r, T, K, rand.Znestedvect,"call");
-        }
-        return price;
+        rand.CreateBrownianMotion();
+        prices["call"] = american_options(S, r, T, K, rand.Znestedvect, true);
+        return prices["call"];
+    }
+
+    double PutPrice(){
+        rand.CreateBrownianMotion();
+        prices["put"] = american_options(S, r, T, K, rand.Znestedvect, false);
+        return prices["put"];
+    }
+
+    std::map<std::string, double> Price(){
+        prices["call"] = CallPrice();
+        prices["put"] = PutPrice();
+        return prices;
     }
 
 };
 
 class Simulation{ //Factory class
+private:
+//control variables for change in attributes:
+double S_hist = 100, r_hist = 0.05, sigma_hist = 0.2, T_hist = 1.0;
+int DayNumber_hist = 252, SimulationNumber_hist = 1000;
+
+void update_attribute(){ //function updating the rand instance with the current attributes
+    if (S_hist != S){rand.S = S; S_hist = S;}
+    if (r_hist != r){rand.r = r; r_hist = r;}
+    if (sigma_hist != sigma){rand.sigma = sigma; sigma_hist = sigma;}
+    if (T_hist != T){rand.T = T; T_hist = T;}
+    if (DayNumber_hist != DayNumber){rand.DayNumber = DayNumber; DayNumber_hist = DayNumber;}
+    if (SimulationNumber_hist != SimulationNumber){rand.SimulationNumber = SimulationNumber; SimulationNumber_hist = SimulationNumber;}
+}
 
 public:
     int seed = 42; //instance of random number
@@ -319,24 +341,29 @@ public:
     explicit Simulation()
         : rand(seed, 1000, 252, S, r, sigma, T){} //constructor automatically creates instance rand w/ default values
 
+    
     //int seed, int SimulationNumber, int DayNumber, double S, double r, double sigma, double T)
     RandomNumber CreateRandomNumber(int seed){
+        update_attribute();
         RandomNumber newrand(seed, SimulationNumber, DayNumber, S, r, sigma, T);
         seed = seed + 1; //change seed for future instance of RandomNumber
         return newrand;
     }
     
     CompoundOption CreateCompoundOption(){
+        update_attribute();
         CompoundOption compound(rand, S, K, K2, T, T2, t, sigma, r, v_h, s_h);
         return compound;
     }
 
     AsianOption CreateAsianOption(){
+        update_attribute();
         AsianOption asian(rand, S, K, T, t, sigma, r, v_h, s_h);
         return asian;
     }
 
     AmericanOption CreateAmericanOption(){
+        update_attribute();
         AmericanOption american(rand, S, K, T, t, sigma, r, v_h, s_h); //initiate an instance of the EuropeanOption object
         return american;
     }

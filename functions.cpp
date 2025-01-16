@@ -104,13 +104,19 @@ std::map<std::string, double> monte_carlo_european(double S, double K, double T,
     double A = 0;
     double B = 0;
     int Nmc = z_vector.size(); // Use the size of the input vector as Nmc
+    double drift = (r - 0.5 * sigma * sigma) * (T - t); //drift component
 
     for (int i = 0; i < Nmc; i++) { // Iterate over all random numbers
-        double rando = z_vector[i];
-        double St = S * std::exp((r - 0.5 * sigma * sigma) * (T - t) + sigma * std::sqrt(T - t) * rando);
+        
+        double diffusion = z_vector[i] * std::sqrt(T - t); //diffusion component
+        //std::cout << diffusion - z_vector[i];
+        double St = S * std::exp(drift + diffusion);
         A += std::max(St - K, 0.0); // Add pay-off to total pay-off
         B += std::max(K - St, 0.0);
     }
+    std::cout <<"drift: " << drift << std::endl;
+    std::cout <<"avg payoff: " << A/Nmc << std::endl;
+    
     A = discount(A / Nmc, (T - t), r);
     B = discount(B / Nmc, (T - t), r);
     results["call"] = A;
@@ -248,7 +254,7 @@ std::map<std::string, double> OLSregression(const std::vector<double> X, std::ve
     return results;
 }
 
-std::map<std::string, std::vector<double>> is_in_the_money(std::vector<double>& underlying, const std::vector<int>& exercise_time, double K){
+std::map<std::string, std::vector<double>> is_in_the_money(std::vector<double>& underlying, const std::vector<int>& exercise_time, double K, bool iscall){
     // function that returns the prices and their index when they're in the money and haven't been exercised yet
     int Nmc = underlying.size();
     std::map<std::string, std::vector<double>> results;
@@ -257,7 +263,7 @@ std::map<std::string, std::vector<double>> is_in_the_money(std::vector<double>& 
   
     for (int i = 0; i < Nmc; ++i) {
         //check if the option is ITM and hasn't been exercised yet
-        if(underlying[i] > K && exercise_time[i] == -1){
+        if(((underlying[i] > K && iscall) || (underlying[i] < K && !iscall)) && exercise_time[i] == -1){
             ITM[count_itm] = underlying[i];
             index[count_itm] = (double)i;
             count_itm += 1;
@@ -271,11 +277,11 @@ std::map<std::string, std::vector<double>> is_in_the_money(std::vector<double>& 
     return results;
 }
 
-double american_options(double S, double r, double T, double K, std::vector<std::vector<double>>& underlying, std::string optiontype) {
-    //function that computes an american option price using the Longstaff-Schwartz method. optiontype is "call" or "put"
+double american_options(double S, double r, double T, double K, std::vector<std::vector<double>>& underlying, bool iscall) {
+    //function that computes an american option price using the Longstaff-Schwartz method. if iscall is true, the pricer will return the call price. 
     //returns a double instead of a map since it's not computationally interesting to compute put and call prices all at once.
 
-    std::map<std::string, double> results;
+    
     double payoff = 0.0;
     int Nmc = underlying.size(); //nb of paths
     double N = underlying[0].size();//length of paths
@@ -299,25 +305,34 @@ double american_options(double S, double r, double T, double K, std::vector<std:
         //build cross-sectional vector at t
         for (int j = 0; j < Nmc; ++j){cross_section[j] = underlying[j][t];}
         //identify in the money paths 
-        std::map<std::string, std::vector<double>> ITM = is_in_the_money(cross_section, exercise_time, K);
+        std::map<std::string, std::vector<double>> ITM = is_in_the_money(cross_section, exercise_time, K, iscall);
 
         int N_ITM = ITM["index"].size();
         if (N_ITM == 0){break;}
 
         //cross-sectional payoff (at t+1) not exercised 
-        for (int i = 0; i < N_ITM; ++i){//iterate on ITM
-            CS_payoff.emplace_back( //discounted ITM cf in t+1
-                discount(
-                    std::max(underlying[ITM["index"][i]][t + 1] - K, 0.0),
-                    dt, r));
+        if (iscall){
+            for(int i = 0; i < N_ITM; ++i){//iterate on ITM
+                CS_payoff.emplace_back( //discounted ITM cf in t+1
+                    discount(
+                        std::max(underlying[ITM["index"][i]][t + 1] - K, 0.0),
+                        dt, r));
+            }
+        } else {for(int i = 0; i < N_ITM; ++i){//iterate on ITM
+                CS_payoff.emplace_back( //discounted ITM cf in t+1
+                    discount(
+                        std::max(K - underlying[ITM["index"][i]][t + 1], 0.0),
+                        dt, r));
+            }
         }
-    
         std::map<std::string, double> reg = OLSregression(ITM["price"], CS_payoff);
         std::vector<double> continuation_val(N_ITM);
         //estimate continuation value
         for(int i = 0; i < N_ITM; ++i){
             continuation_val[i] = reg["intercept"] + reg["slope"] * ITM["price"][i];
-            if(continuation_val[i] > std::max(ITM["price"][i] - K, 0.0)){
+            //check if it's more profitable to exercise now
+            if((iscall && std::max(ITM["price"][i] - K, 0.0) > continuation_val[i]) //call
+            ||(!iscall && std::max(K - ITM["price"][i], 0.0) > continuation_val[i])){ //put
                 exercise_time[ITM["index"][i]] = t; //exercised
             }
         }
@@ -325,70 +340,15 @@ double american_options(double S, double r, double T, double K, std::vector<std:
     
     for (int i = 0; i< Nmc; ++i){
         if(exercise_time[i] >= 0){ //don't sum unexercized options
-            payoff += inv_Nmc * discount(
-                std::max(underlying[i][exercise_time[i]] - K, 0.0), 
-                exercise_time[i] * dt, r); 
+            if(iscall){payoff += inv_Nmc * discount(
+                    std::max(underlying[i][exercise_time[i]] - K, 0.0), 
+                    exercise_time[i] * dt, r); 
+            } else {payoff += inv_Nmc * discount(
+                    std::max(K - underlying[i][exercise_time[i]], 0.0), 
+                    exercise_time[i] * dt, r);
+            }
         }
     }
     return payoff;
-}
-
-std::map<std::string, double> monte_carlo_simmulation(std::string option_type, std::vector<double> arguments, int Nmc, double v_h, double s_h) {
-    //arguments is :
-    //double S, double K or K1, double T, double t, double sigma, double r, double K2, double T1, double T2, N
-    std::map<std::string, double> results;
-    
-    if(option_type == "asian_options"){
-        //asian option
-        //arguments: double S, double r, double T, double N, double K, double sigma
-        double S = arguments[0];
-        double K = arguments[1];
-        double T = arguments[2];
-        double sigma = arguments[4];
-        double r = arguments[5];
-
-        int N = static_cast<int>(arguments[9]);
-        
-        
-        //generate random variable with random seed
-        std::random_device rd;
-        int seed = rd();
-        std::vector<std::vector<double>> z = multi_simmulations_SBM(T, N, sigma, S, r, Nmc, seed);//T, N, sigma
-
-        //Monte Carlo simulation
-        std::map<std::string, double> prices = asian_options(S, r, T, K, z);
-    
-        //call greek extractors
-        std::vector<std::vector<double>> z_hplus = multi_simmulations_SBM(T, N, sigma, S + s_h, r, Nmc, seed);
-        std::vector<std::vector<double>> z_hminus = multi_simmulations_SBM(T, N, sigma, S - s_h, r, Nmc, seed);
-        std::map<std::string, double> p_plus = asian_options(S + s_h, r, T, K, z_hplus);
-        std::map<std::string, double> p_minus = asian_options(S - s_h, r, T, K, z_hminus);
-        std::vector<std::vector<double>> z_vplus = multi_simmulations_SBM(T, N, sigma + v_h, S, r, Nmc, seed);
-        std::vector<std::vector<double>> z_vminus = multi_simmulations_SBM(T, N, sigma - v_h, S, r, Nmc, seed);
-        std::map<std::string, double> p_plus_vega = asian_options(S, r, T, K, z_vplus);
-        std::map<std::string, double> p_minus_vega = asian_options(S, r, T, K, z_vminus);
-
-        std::map<std::string, double> results;
-        for (auto& pair : prices) { //for each type of contract:
-            results[pair.first + "_price"] = pair.second;
-            std::map<std::string, double> greeks = delta_gamma_extraction(prices[pair.first], p_plus[pair.first], p_minus[pair.first], s_h);
-            greeks["vega"] = vega_vomma_extraction(prices[pair.first], p_plus_vega[pair.first], p_minus_vega[pair.first], v_h)["vega"];
-            greeks["vomma"] = vega_vomma_extraction(prices[pair.first], p_plus_vega[pair.first], p_minus_vega[pair.first], v_h)["vomma"];
-            for (auto& duo : greeks) { //for each greek:
-                std::string contract_greek = pair.first + "_" + duo.first;
-                results[contract_greek] = duo.second;
-                //std::cout << "Value for " << contract_greek << " is : " << results[contract_greek] << "\n";
-            }
-        }
-        return results;
-    } else if(option_type == "european_options_monte_carlo") {
-        //call monte carlo euro 
-    } else if(option_type == "european_options"){
-        //call BSM euro 
-    } else if(option_type == "compound_options"){
-        //compound option
-    }
-
-    return results;
 }
 
