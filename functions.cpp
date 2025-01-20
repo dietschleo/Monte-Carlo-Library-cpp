@@ -104,18 +104,15 @@ std::map<std::string, double> monte_carlo_european(double S, double K, double T,
     double A = 0;
     double B = 0;
     int Nmc = z_vector.size(); // Use the size of the input vector as Nmc
-    double drift = (r - 0.5 * sigma * sigma) * (T - t); //drift component
+    double drift = (r - 0.5 * (sigma * sigma)) * (T - t); //drift component
 
     for (int i = 0; i < Nmc; i++) { // Iterate over all random numbers
-        
         double diffusion = z_vector[i] * std::sqrt(T - t); //diffusion component
-        //std::cout << diffusion - z_vector[i];
+        //std::cout << z_vector[i] << std::endl;
         double St = S * std::exp(drift + diffusion);
         A += std::max(St - K, 0.0); // Add pay-off to total pay-off
         B += std::max(K - St, 0.0);
     }
-    std::cout <<"drift: " << drift << std::endl;
-    std::cout <<"avg payoff: " << A/Nmc << std::endl;
     
     A = discount(A / Nmc, (T - t), r);
     B = discount(B / Nmc, (T - t), r);

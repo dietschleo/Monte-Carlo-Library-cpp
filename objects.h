@@ -7,13 +7,13 @@
 
 class RandomNumber {
 private:    
-    double S_hist, sigma_hist, r_hist; //control variables for updates
+    double S_hist, sigma_hist, r_hist, T_hist; //control variables for updates
+        int seed;
 public:
-    int seed;
-    double S, sigma, T, r;
     int SimulationNumber, DayNumber;
     std::vector<double> Zvector, Zvector2;
     std::vector<std::vector<double>> Znestedvect;
+    double S, sigma, r, T;
 
     std::vector<std::vector<double>> CreateRandomSeries(){
         Zvector = vector_std_dist(0.0, sigma, SimulationNumber, seed);
@@ -42,14 +42,34 @@ public:
     void SetSeed(int NewSeed){
         seed = NewSeed;
     }
+
+    int GetSeed(){//getter func for seed
+        return seed;
+    }
     RandomNumber(int seed, int SimulationNumber, int DayNumber, double S, double r, double sigma, double T)
         : seed(seed), SimulationNumber(SimulationNumber), DayNumber(DayNumber), S(S), sigma(sigma), r(r), T(T){}
 };
 
 class EuropeanOption {
 private:
-    bool pricesCalculated, MCdefault = false;
+    double S_hist, sigma_hist, r_hist, T_hist;
+    bool MCdefault = false;
     std::map<std::string, double> MCprice; //cache for MC calculated price
+
+    bool check_update(){//function that returns true if a parameter has been updated, propagate parameter update to rand instance
+        bool result = true; //true until proven false
+        if(S_hist != S || sigma_hist != sigma || r_hist != r || T_hist != T){
+            rand.S = S;
+            rand.r = r;
+            rand.sigma = sigma;
+            S_hist = S;
+            r_hist = r;
+            sigma_hist = sigma;
+            result = false;
+            rand.Reset();
+        }
+        return result;
+    }
 public:
     RandomNumber rand;
     double S, K, T, t, sigma, r, s_h, v_h;
@@ -57,7 +77,7 @@ public:
 
     //constructor
     EuropeanOption(RandomNumber rand, double S, double K, double T, double t, double sigma, double r,double v_h,double s_h)
-        : rand(rand), S(S), K(K), T(T), t(t), sigma(sigma), r(r), v_h(v_h), s_h(s_h), pricesCalculated(false) {}
+        : rand(rand), S(S), K(K), T(T), t(t), sigma(sigma), r(r), v_h(v_h), s_h(s_h){}
 
     //function for prices:
 
@@ -75,11 +95,10 @@ public:
     }
 
     std::map<std::string, double> MonteCarloPrice() {
-        if (MCprice.empty()){
+        if (MCprice.empty() || !check_update()){
             rand.CreateRandomSeries();
             prices = monte_carlo_european(S, K, T, t, sigma, r, rand.Zvector);
             MCprice = prices; 
-            pricesCalculated = true;
         }
         return prices;
     }
@@ -94,7 +113,7 @@ public:
     }
 
     std::map<std::string, double> ExtractGreeks(){
-        if (prices.empty()){
+        if (prices.empty() || !check_update()){
             prices = Price();
         }
         //placeholders for current variables and prices
@@ -102,12 +121,16 @@ public:
         double temp_S = S;
         double temp_sigma = sigma;
         S = S + s_h;
-        std::map<std::string, double> p_plus = Price();
+        check_update();
+		std::map<std::string, double> p_plus = Price();
         S = temp_S - s_h;
+		check_update();
         std::map<std::string, double> p_minus = Price();
         sigma = sigma + v_h;
+		check_update();
         std::map<std::string, double>  p_plus_v = Price();
         sigma = temp_sigma - v_h;
+		check_update();
         std::map<std::string, double>  p_minus_v = Price();
 
         prices = temp_prices;
@@ -126,6 +149,7 @@ public:
         //reset original price and variable
         sigma = temp_sigma;
         S = temp_S;
+        greeks = results;
         return results;
     }
 
@@ -134,26 +158,42 @@ public:
 
 class CompoundOption {
 private:
-    bool pricesCalculated;
+    double S_hist, sigma_hist, r_hist, T_hist;
+    bool check_update(){//function that returns true if a parameter has been updated, propagate parameter update to rand instance
+        bool result = true; //true until proven false
+        if(S_hist != S || sigma_hist != sigma || r_hist != r || T_hist != T){
+            rand.S = S;
+            rand.r = r;
+            rand.sigma = sigma;
+            S_hist = S;
+            r_hist = r;
+            sigma_hist = sigma;
+            result = false;
+            rand.Reset();
+        }
+        return result;
+    }
+
 //compound_option(double S, double K1, double K2, double T1, double T2, double sigma, double r, const std::vector<double>& z1, const std::vector<double>& z2)
 public:
     RandomNumber rand;
     double S, K, K2, T, T2, t, sigma, r, s_h, v_h;
-    std::map<std::string, double> prices;
+    std::map<std::string, double> prices, greeks;
 
     CompoundOption(RandomNumber rand, double S, double K, double K2, double T, double T2, double t, double sigma, double r,double v_h,double s_h)
-    : rand(rand), S(S), K(K), K2(K2), T(T), T2(T2), t(t), sigma(sigma), r(r), v_h(v_h), s_h(s_h), pricesCalculated(false) {}
+    : rand(rand), S(S), K(K), K2(K2), T(T), T2(T2), t(t), sigma(sigma), r(r), v_h(v_h), s_h(s_h) {}
 
     std::map<std::string, double> Price(){
-        if (!pricesCalculated){
-            rand.CreateRandomSeries();
-            prices = compound_option(S, K, K2, T, T2, sigma, r, rand.Zvector, rand.Zvector2);
-        }
+        check_update();
+        prices.clear();
+        rand.Reset();
+        rand.CreateRandomSeries();
+        prices = compound_option(S, K, K2, T, T2, sigma, r, rand.Zvector, rand.Zvector2);
         return prices;
     }
 
     std::map<std::string, double> ExtractGreeks(){
-        if (prices.empty()){
+        if (prices.empty() || !check_update()){
             prices = Price();
         }
         //placeholders for current variables and prices
@@ -161,12 +201,16 @@ public:
         double temp_S = S;
         double temp_sigma = sigma;
         S = S + s_h;
-        std::map<std::string, double> p_plus = Price();
+        check_update();
+		std::map<std::string, double> p_plus = Price();
         S = temp_S - s_h;
+		check_update();
         std::map<std::string, double> p_minus = Price();
         sigma = sigma + v_h;
+		check_update();
         std::map<std::string, double>  p_plus_v = Price();
         sigma = temp_sigma - v_h;
+		check_update();
         std::map<std::string, double>  p_minus_v = Price();
 
         prices = temp_prices;
@@ -186,6 +230,7 @@ public:
         
         sigma = temp_sigma;
         S = temp_S;
+        greeks = results;
         return results;
     }
     
@@ -193,55 +238,76 @@ public:
 
 class AsianOption {
 private:
-    bool pricesCalculated;
+    double S_hist, sigma_hist, r_hist, T_hist;
     
-
+    bool check_update(){//function that returns true if a parameter has been updated, propagate parameter update to rand instance
+        bool result = true; //true until proven false
+        if(S_hist != S || sigma_hist != sigma || r_hist != r || T_hist != T){
+            rand.S = S;
+            rand.r = r;
+            rand.sigma = sigma;
+            S_hist = S;
+            r_hist = r;
+            sigma_hist = sigma;
+            result = false;
+            rand.Reset();
+        }
+        return result;
+    }
+    
 public:
     RandomNumber rand;
+    int n_threads;
     double S, K, T, t, sigma, r, v_h, s_h;
     std::map<std::string, double> prices, greeks;
 
-    AsianOption(RandomNumber rand, double S, double K, double T, double t, double sigma, double r, double v_h, double s_h)
-        : rand(rand), S(S), K(K), T(T), t(t), sigma(sigma), r(r), v_h(v_h), s_h(s_h), pricesCalculated(false) {}
+    AsianOption(RandomNumber rand, double S, double K, double T, double t, double sigma, double r, double v_h, double s_h, int n_threads)
+        : rand(rand), S(S), K(K), T(T), t(t), sigma(sigma), r(r), v_h(v_h), s_h(s_h), n_threads(n_threads) {}
     
-    std::map<std::string, double> Price(){
-        rand.S = S;
-        rand.sigma = sigma;
-        rand.CreateBrownianMotion();
-        prices = asian_options(S, r, T, K, rand.Znestedvect);
-    return prices;
+
+
+    std::map<std::string, double> Price() {
+        check_update();
+        if(n_threads==1){
+            rand.CreateBrownianMotion();
+            prices = asian_options(S, r, T, K, rand.Znestedvect);
+            return prices;
+
+        } else {
+            // Define a lambda function to wrap the call to asian_options
+			auto asian_option_pricer = [this](double S, double r, double T, double K, const std::vector<std::vector<double>>& Znestedvect, int seed) {
+			RandomNumber local_rand = rand;   // Create a local copy of rand
+			local_rand.SetSeed(seed);     // Assign a unique seed for this thread
+			local_rand.CreateBrownianMotion(); // Generate Brownian motion with the new seed
+			return asian_options(S, r, T, K, local_rand.Znestedvect);
+			};
+
+			// Use parallel_run to compute results across multiple threads
+			
+			auto results = parallel_run(
+			[this, asian_option_pricer](double S, double r, double T, double K, const std::vector<std::vector<double>>& Znestedvect, int thread_index) {
+				int unique_seed = rand.GetSeed() + thread_index; // Unique seed for each thread
+				return asian_option_pricer(S, r, T, K, Znestedvect, unique_seed);
+			},
+			n_threads,
+			S, r, T, K, rand.Znestedvect, 0 // Thread index passed as the last argument
+			);
+
+			// Compute the average of the results
+			std::map<std::string, double> averaged_results;
+			for (const auto& [key, value] : results) {
+			averaged_results[key] = value / static_cast<double>(n_threads); // Divide by the number of threads
+			}
+            prices = averaged_results;
+			return averaged_results;
+        }
     }
 
-    std::map<std::string, double> TempPrice() {
-    // Define a lambda function to wrap the call to asian_options
-    auto asian_option_pricer = [this](double S, double r, double T, double K, const std::vector<std::vector<double>>& Znestedvect, int seed) {
-        RandomNumber local_rand = rand;   // Create a local copy of rand
-        local_rand.seed = seed;     // Assign a unique seed for this thread
-        local_rand.CreateBrownianMotion(); // Generate Brownian motion with the new seed
-        return asian_options(S, r, T, K, local_rand.Znestedvect);
-    };
-
-    // Use parallel_run to compute results across multiple threads
-    int n_threads = 5;
-    auto results = parallel_run(
-        [this, asian_option_pricer](double S, double r, double T, double K, const std::vector<std::vector<double>>& Znestedvect, int thread_index) {
-            int unique_seed = rand.seed + thread_index; // Unique seed for each thread
-            return asian_option_pricer(S, r, T, K, Znestedvect, unique_seed);
-        },
-        n_threads,
-        S, r, T, K, rand.Znestedvect, 0 // Thread index passed as the last argument
-    );
-
-    // Compute the average of the results
-    std::map<std::string, double> averaged_results;
-    for (const auto& [key, value] : results) {
-        averaged_results[key] = value / static_cast<double>(n_threads); // Divide by the number of threads
+    void Clear(){
+        prices.clear();
+        greeks.clear();
     }
-
-    return averaged_results;
-    }
-
-        std::map<std::string, double> ExtractGreeks(){
+    std::map<std::string, double> ExtractGreeks(){
         //placeholders for current variables and prices
         if (prices.empty()){
             prices = Price();
@@ -250,12 +316,16 @@ public:
         double temp_S = S;
         double temp_sigma = sigma;
         S = S + s_h;
-        std::map<std::string, double> p_plus = Price();
+        check_update();
+		std::map<std::string, double> p_plus = Price();
         S = temp_S - s_h;
+		check_update();
         std::map<std::string, double> p_minus = Price();
         sigma = sigma + v_h;
+		check_update();
         std::map<std::string, double>  p_plus_v = Price();
         sigma = temp_sigma - v_h;
+		check_update();
         std::map<std::string, double>  p_minus_v = Price();
 
         prices = temp_prices;
@@ -275,39 +345,133 @@ public:
 
         sigma = temp_sigma;
         S = temp_S;
+        greeks = results;
         return results;
         }
 };
 
 class AmericanOption{
 private:
-    bool pricesCalculated;
     double price;
+    int n_threads;
+    double S_hist, sigma_hist, r_hist, T_hist;
+
+    bool check_update(){//function that returns true if a parameter has been updated, propagate parameter update to rand instance
+        bool result = true; //true until proven false
+        if(S_hist != S || sigma_hist != sigma || r_hist != r || T_hist != T){
+            rand.S = S;
+            rand.r = r;
+            rand.sigma = sigma;
+            S_hist = S;
+            r_hist = r;
+            sigma_hist = sigma;
+            result = false;
+            rand.Reset();
+        }
+        return result;
+    }
+
 public:
     RandomNumber rand;
     double S, K, T, t, sigma, r, v_h, s_h;
     std::map<std::string, double> prices, greeks;
 
-    AmericanOption(RandomNumber rand, double S, double K, double T, double t, double sigma, double r, double v_h, double s_h)
-        : rand(rand), S(S), K(K), T(T), t(t), sigma(sigma), r(r), v_h(v_h), s_h(s_h), pricesCalculated(false){}
+    AmericanOption(RandomNumber rand, double S, double K, double T, double t, double sigma, double r, double v_h, double s_h, int n_threads)
+        : rand(rand), S(S), K(K), T(T), t(t), sigma(sigma), r(r), v_h(v_h), s_h(s_h), n_threads(n_threads){}
 
     double CallPrice(){
+        check_update();
         rand.CreateBrownianMotion();
         prices["call"] = american_options(S, r, T, K, rand.Znestedvect, true);
         return prices["call"];
     }
 
     double PutPrice(){
+        check_update();
         rand.CreateBrownianMotion();
         prices["put"] = american_options(S, r, T, K, rand.Znestedvect, false);
         return prices["put"];
     }
 
-    std::map<std::string, double> Price(){
-        prices["call"] = CallPrice();
-        prices["put"] = PutPrice();
+    std::map<std::string, double> Price() {
+        if (n_threads == 1) {
+            prices["call"] = CallPrice();
+            prices["put"] = PutPrice();
+        } else {
+            // Define lambda function
+            auto lambda_american_pricer = [this](double S, double r, double T, double K, const std::vector<std::vector<double>>& Znestedvect) -> std::map<std::string, double> {
+                RandomNumber local_rand = rand;  // Create local copy of rand
+                local_rand.CreateBrownianMotion(); // Generate Brownian motion
+                std::map<std::string, double> temp;
+                temp["call"] = american_options(S, r, T, K, local_rand.Znestedvect, true);
+                temp["put"] = american_options(S, r, T, K, local_rand.Znestedvect, false);
+                return temp;
+            };
+
+            // Multi-threading using parallel_run
+            auto results = parallel_run(
+                [this, lambda_american_pricer](double S, double r, double T, double K, const std::vector<std::vector<double>>& Znestedvect, int thread_index) {
+                    RandomNumber local_rand = rand;  // Create a thread-local RandomNumber
+                    local_rand.SetSeed(rand.GetSeed() + thread_index); // Assign unique seed
+                    local_rand.CreateBrownianMotion(); // Generate Brownian motion
+                    return lambda_american_pricer(S, r, T, K, local_rand.Znestedvect);
+                },
+                n_threads,
+                S, r, T, K, rand.Znestedvect, 0 // Pass required arguments
+            );
+
+            // Average the results
+            prices.clear();
+            for (const auto& [key, value] : results) {
+                prices[key] += value / static_cast<double>(n_threads);
+            }
+        }
+
         return prices;
     }
+
+
+    std::map<std::string, double> ExtractGreeks(){
+        //placeholders for current variables and prices
+        if (prices.empty() || !check_update()){
+            prices = Price();
+        }
+        std::map<std::string, double> temp_prices = prices;
+        double temp_S = S;
+        double temp_sigma = sigma;
+        S = S + s_h;
+        check_update();
+		std::map<std::string, double> p_plus = Price();
+        S = temp_S - s_h;
+		check_update();
+        std::map<std::string, double> p_minus = Price();
+        sigma = sigma + v_h;
+		check_update();
+        std::map<std::string, double>  p_plus_v = Price();
+        sigma = temp_sigma - v_h;
+		check_update();
+        std::map<std::string, double>  p_minus_v = Price();
+
+        prices = temp_prices;
+        std::map<std::string, double> results;
+        for (auto& pair : prices) { //for each type of contract:
+            results[pair.first + "_price"] = pair.second;
+            std::map<std::string, double> greeks = delta_gamma_extraction(prices[pair.first], p_plus[pair.first], p_minus[pair.first], s_h);
+            greeks["vega"] = vega_vomma_extraction(prices[pair.first], p_plus_v[pair.first], p_minus_v[pair.first], v_h)["vega"];
+            greeks["vomma"] = vega_vomma_extraction(prices[pair.first], p_plus_v[pair.first], p_minus_v[pair.first], v_h)["vomma"];
+            for (auto& duo : greeks) { //for each greek:
+                std::string contract_greek = pair.first + "_" + duo.first;
+                results[contract_greek] = duo.second;
+                //std::cout << S << " Value for " << contract_greek << " is : " << results[contract_greek] << "\n";
+            }
+        }
+        //reset original price and variable
+
+        sigma = temp_sigma;
+        S = temp_S;
+        greeks = results;
+        return results;
+        }
 
 };
 
@@ -336,7 +500,7 @@ public:
     RandomNumber rand;
 
 
-    int DayNumber = 252, SimulationNumber = 1000;
+    int DayNumber = 252, SimulationNumber = 1000, n_threads = 1;
 
     explicit Simulation()
         : rand(seed, 1000, 252, S, r, sigma, T){} //constructor automatically creates instance rand w/ default values
@@ -358,13 +522,13 @@ public:
 
     AsianOption CreateAsianOption(){
         update_attribute();
-        AsianOption asian(rand, S, K, T, t, sigma, r, v_h, s_h);
+        AsianOption asian(rand, S, K, T, t, sigma, r, v_h, s_h, n_threads);
         return asian;
     }
 
     AmericanOption CreateAmericanOption(){
         update_attribute();
-        AmericanOption american(rand, S, K, T, t, sigma, r, v_h, s_h); //initiate an instance of the EuropeanOption object
+        AmericanOption american(rand, S, K, T, t, sigma, r, v_h, s_h, n_threads); //initiate an instance of the EuropeanOption object
         return american;
     }
 
