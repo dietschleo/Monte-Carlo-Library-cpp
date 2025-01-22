@@ -6,8 +6,9 @@
 #include <map>
 #include <cmath>
 #include "functions.h"
-#include "objects.h"
+#include "Simulation.h"
 #include "RandomNumber.h"
+//#include "AmericanOption.h"
 #include <tuple>
 #include <string>
 #include <random>

@@ -3,6 +3,7 @@
 #include <future>
 #include <functional>
 #include <random>
+#include <map>
 
 // Function declaration
 template <typename Function, typename... Args>
