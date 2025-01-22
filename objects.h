@@ -3,52 +3,9 @@
 
 //import dependencies
 #include "functions.h"
+#include "RandomNumber.h"
 #include <map>
 
-class RandomNumber {
-private:    
-    double S_hist, sigma_hist, r_hist, T_hist; //control variables for updates
-        int seed;
-public:
-    int SimulationNumber, DayNumber;
-    std::vector<double> Zvector, Zvector2;
-    std::vector<std::vector<double>> Znestedvect;
-    double S, sigma, r, T;
-
-    std::vector<std::vector<double>> CreateRandomSeries(){
-        Zvector = vector_std_dist(0.0, sigma, SimulationNumber, seed);
-        Zvector2 = vector_std_dist(0.0, sigma, SimulationNumber, seed + 1);
-        return {Zvector, Zvector2};
-    }
-
-    std::vector<std::vector<double>> CreateBrownianMotion(){
-        //check if the vector has never been computed or variables have been updated since last computation
-        if (Znestedvect.size() == 0 || S != S_hist || sigma != sigma_hist || r != r_hist){
-            Znestedvect = multi_simmulations_SBM(T, DayNumber, sigma, S, r, SimulationNumber, seed);
-            S_hist = S;
-            sigma_hist= sigma;
-            r_hist=r;
-        }
-        return Znestedvect;
-    }
-
-    void Reset(){
-        //method to clear memory of instance
-        Zvector.clear();
-        Zvector2.clear();
-        Znestedvect.clear();
-    }
-
-    void SetSeed(int NewSeed){
-        seed = NewSeed;
-    }
-
-    int GetSeed(){//getter func for seed
-        return seed;
-    }
-    RandomNumber(int seed, int SimulationNumber, int DayNumber, double S, double r, double sigma, double T)
-        : seed(seed), SimulationNumber(SimulationNumber), DayNumber(DayNumber), S(S), sigma(sigma), r(r), T(T){}
-};
 
 class EuropeanOption {
 private:

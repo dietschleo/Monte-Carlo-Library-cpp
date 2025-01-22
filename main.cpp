@@ -7,6 +7,7 @@
 #include <cmath>
 #include "functions.h"
 #include "objects.h"
+#include "RandomNumber.h"
 #include <tuple>
 #include <string>
 #include <random>
