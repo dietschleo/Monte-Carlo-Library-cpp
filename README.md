@@ -45,50 +45,62 @@ This repository provides a Monte Carlo simulation library in C++ designed for pr
 ### Build Instructions
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/Monte-Carlo-Library-cpp.git
+   git clone https://github.com/dietschleo/Monte-Carlo-Library-cpp
    cd Monte-Carlo-Library-cpp
+   ```
 
+2. Compile the project:
+   ```bash
+   g++ main.cpp Simulation.cpp RandomNumber.cpp AsianOption.cpp AmericanOption.cpp EuropeanOption.cpp CompoundOption.cpp -o monte_carlo -lpthread
+   ```
 
+3. Run the executable:
+   ```bash
+   ./monte_carlo
+   ```
 
-## Usage Examples
+## Usage examples
+
+### Pricing and Vega extraction for an Asian Option
 
 ```cpp
-   int main() {
-      
-      // Initialize Simulation
-      Simulation sim;
-      sim.SimulationNumber = 100000;
+#include <iostream>
+#include "Simulation.h"
 
-      // Enable multi-threading
-      sim.n_threads = 4;
+int main() {
+    // Initialize Simulation
+    Simulation sim;
+    sim.SimulationNumber = 100000;
 
-      // Create Asian options
-      auto option = sim.CreateAsianOption();
+    // Enable multi-threading
+    sim.n_threads = 4;
 
+    // Create Asian options
+    auto option = sim.CreateAsianOption();
 
+    // Iterate over S values
+    for (int i = 90; i <= 110; ++i) {
+        option.S = i;
 
-      // Iterate over S values
-      for (int i = 90; i <= 110; ++i) {
-         option.S = i;
+        // Multi-threaded pricing
+        auto greeks = option.ExtractGreeks();
+        std::cout << option.S << " : fixed strike call price: " << option.prices["fixed_strike_call"]
+                  << ", corresponding vega: " << option.greeks["fixed_strike_call_vega"] << std::endl;
 
-         // Multi-threaded pricing
-         auto greeks = option.ExtractGreeks();
-         std::cout << option.S << " : fixed strike call price: " << option.prices["fixed_strike_call"]
-            << ", corresponding vega: " << option.greeks["fixed_strike_call_vega"]<< std::endl;
+        // Clear memory and reset for next iteration
+        option.Clear();
+        option.rand.Reset();
+    }
 
-         // Clear memory and reset for next iteration
-         option.Clear();
-         option.rand.Reset();
-      }
-      return 0;
-   }
+    return 0;
+}
+   ```
 
-Output:
-
-```batch
+   ```bash
    90 : fixed strike call price: 0.751269, corresponding vega: 11.6569
    91 : fixed strike call price: 0.904686, corresponding vega: 12.9664
    92 : fixed strike call price: 1.0815, corresponding vega: 14.2808
    93 : fixed strike call price: 1.28258, corresponding vega: 15.5388
    94 : fixed strike call price: 1.5093, corresponding vega: 16.7593
    ...
+   ```
