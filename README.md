@@ -47,3 +47,49 @@ This repository provides a Monte Carlo simulation library in C++ designed for pr
    ```bash
    git clone https://github.com/your-username/Monte-Carlo-Library-cpp.git
    cd Monte-Carlo-Library-cpp
+
+
+
+## Usage Examples
+
+```cpp
+int main() {
+    
+    // Initialize Simulation
+    Simulation sim;
+    sim.SimulationNumber = 100000;
+
+    // Enable multi-threading
+    sim.n_threads = 4;
+
+    // Create Asian options
+    auto option = sim.CreateAsianOption();
+
+
+
+    // Iterate over S values
+    for (int i = 90; i <= 110; ++i) {
+        option.S = i;
+
+        // Multi-threaded pricing
+        auto greeks = option.ExtractGreeks();
+        std::cout << option.S << " : fixed strike call price: " << option.prices["fixed_strike_call"]
+            << ", corresponding vega: " << option.greeks["fixed_strike_call_vega"]<< std::endl;
+
+        // Clear memory and reset for next iteration
+        option.Clear();
+        option.rand.Reset();
+    }
+    return 0;
+}
+
+```markdown
+Output:
+
+```batch
+90 : fixed strike call price: 0.751269, corresponding vega: 11.6569
+91 : fixed strike call price: 0.904686, corresponding vega: 12.9664
+92 : fixed strike call price: 1.0815, corresponding vega: 14.2808
+93 : fixed strike call price: 1.28258, corresponding vega: 15.5388
+94 : fixed strike call price: 1.5093, corresponding vega: 16.7593
+...

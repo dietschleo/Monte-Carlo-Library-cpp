@@ -6,7 +6,6 @@
 #include "functions.h"
 #include "AsianOption.h"
 
-
     
     bool AsianOption::check_update(){//function that returns true if a parameter has been updated, propagate parameter update to rand instance
         bool result = true; //true until proven false
