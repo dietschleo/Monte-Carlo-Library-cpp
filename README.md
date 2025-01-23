@@ -17,7 +17,7 @@ This repository provides a Monte Carlo simulation library in C++ designed for pr
 
 ## Class Structure
 
-![Class Diagram](Class diagram.png)
+![Class Diagram](class_diagram.png)
 
 ### Key Components
 
